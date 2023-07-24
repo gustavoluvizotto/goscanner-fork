@@ -10,6 +10,7 @@ import (
 	"golang.org/x/time/rate"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,27 +29,26 @@ func (s *StartTLSLDAP) Init(opts *misc.Options, keylogFile io.Writer) {
 }
 
 func (s *StartTLSLDAP) GetDefaultPort() int {
-	return 636
+	return 389
 }
 
 func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration,
 	synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (rconn net.Conn, err error) {
 
-	/* reconnect if you add starttls to another protocol;
-	   in case your scanning pipeline contains multiple protocol scans */
-	rconn, synStart, synEnd, err = reconnect(conn, timeout)
-	if err != nil {
-		return nil, err
-	}
 	defer func() {
-		if err != nil {
+		if err != nil && conn != nil {
 			// starttls connection must be finished so the next scans may succeed
-			rconn, _, _, err = reconnect(rconn, timeout)
+			rconn, _, _, err = reconnect(conn, timeout)
 			if err != nil {
 				rconn = nil // could not reconnect, then stopping
 			}
 		}
 	}()
+
+	if conn == nil {
+		log.Error().Str("ServerName", target.Domain).Msg("TCP Connection was nil")
+		return nil, errors.New("TCP Connection was nil")
+	}
 
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, s.nextMessageID(), "MessageID"))
@@ -57,44 +57,46 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	packet.AppendChild(request)
 	log.Debug().Str("requestPacket", packet.Data.String()).Msg("Send request")
 
-	_, err = rconn.Write(packet.Bytes())
+	n, err := conn.Write(packet.Bytes())
 	sTlsLdapResult := results.LDAPResult{HasStartTLS: false}
 	if err != nil {
+		log.Debug().Str("n", strconv.FormatInt(int64(n), 10)).Msg("write n bytes")
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return rconn, err
+		return conn, err
 	}
 
-	var packetResponse []byte
-	packetResponse = make([]byte, 1024) // typical right response is the ldapStartTLSOID, rfc4511#section-4.14.2
-	_, err = rconn.Read(packetResponse)
+	packetResponse := make([]byte, 1024) // typical right response is the ldapStartTLSOID, rfc4511#section-4.14.2
+	n, err = conn.Read(packetResponse)
 	if err != nil {
+		log.Debug().Str("n", strconv.FormatInt(int64(n), 10)).Msg("read n bytes")
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return rconn, err
+		return conn, err
 	}
 
 	packet = ber.DecodePacket(packetResponse)
 	log.Debug().Str("responsePacket", packet.Data.String()).Msg("Got response")
+
 	err = ldap.GetLDAPError(packet)
 	if err != nil {
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return rconn, err
+		return conn, err
 	}
 
-	if err = hasLDAPStartTLSOID(packet); err != nil {
-		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return rconn, err
+	err = hasLDAPStartTLSOID(packet)
+	if err != nil {
+		log.Debug().Str("IP", target.Ip).Msg(err.Error())
 	}
 
 	sTlsLdapResult.HasStartTLS = true
-	addResult(result, synStart, synEnd, nil, &sTlsLdapResult)
-	return rconn, nil
+	addResult(result, synStart, synEnd, err, &sTlsLdapResult)
+	return conn, nil
 }
 
 func hasLDAPStartTLSOID(packet *ber.Packet) error {
 	if len(packet.Children) >= 2 && strings.Contains(packet.Children[1].Data.String(), ldapStartTLSOID) {
 		return nil
 	}
-	return errors.New("the server did not responded with StartTLS")
+	return errors.New("the server did not responded with StartTLS") // not conforming with rfc4511#section-4.14.2
 }
 
 func (s *StartTLSLDAP) nextMessageID() uint32 {

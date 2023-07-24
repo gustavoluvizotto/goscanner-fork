@@ -36,7 +36,6 @@ func (s *TLSScan) Init(opts *misc.Options, keylogFile io.Writer) {
 // Scan performs the actual TLS scan and adds results to the target
 func (s *TLSScan) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration, synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (net.Conn, error) {
 	serverName := target.Domain
-
 	cache := tls.NewLRUClientSessionCache(1)
 
 	tlsConn, err := scanTLS(conn, serverName, timeout, 0, cache, nil, nil, target.CHName, s.keyLogFile, nil)
