@@ -58,7 +58,7 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	log.Debug().Str("requestPacket", packet.Data.String()).Msg("Send request")
 
 	n, err := conn.Write(packet.Bytes())
-	sTlsLdapResult := results.LDAPResult{HasStartTLS: false}
+	sTlsLdapResult := results.StartTLSLDAPResult{HasStartTLS: false}
 	if err != nil {
 		log.Debug().Str("n", strconv.FormatInt(int64(n), 10)).Msg("write n bytes")
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
@@ -108,12 +108,12 @@ func (s *StartTLSLDAP) nextMessageID() uint32 {
 	return s.messageID
 }
 
-func addResult(result *results.ScanResult, synStart time.Time, synEnd time.Time, err error, ldapResult *results.LDAPResult) {
-	ldapResult.LdapError = err
+func addResult(result *results.ScanResult, synStart time.Time, synEnd time.Time, err error, sTlsLdapResult *results.StartTLSLDAPResult) {
+	sTlsLdapResult.LdapError = err
 	result.AddResult(results.ScanSubResult{
 		SynStart: synStart,
 		SynEnd:   synEnd,
 		ScanEnd:  time.Now().UTC(),
-		Result:   ldapResult,
+		Result:   sTlsLdapResult,
 	})
 }

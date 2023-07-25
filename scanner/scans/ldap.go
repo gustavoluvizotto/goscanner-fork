@@ -46,7 +46,7 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 	l, err := ldap.Dial("tcp", net.JoinHostPort(ldapHostName, port))
 	if err != nil {
 		log.Debug().Str("err", err.Error()).Msg("Error connecting to ldap server")
-		addResult(result, synStart, synEnd, err, &results.LDAPResult{LdapError: err})
+		//addResult(result, synStart, synEnd, err, &results.LDAPResult{LdapError: err})
 		return nil, err
 	}
 
@@ -57,7 +57,7 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 		log.Debug().Str("err", err.Error()).Msg("Error binding to ldap server")
 	}
 
-	addResult(result, synStart, synEnd, err, &results.LDAPResult{})
+	//addResult(result, synStart, synEnd, err, &results.LDAPResult{})
 
 	return conn, nil
 }

@@ -26,8 +26,7 @@ const (
 	FileJarm        = "jarm.csv"
 	FileKeyLog      = "tls-keylog"
 
-	// FileLdap file to save LDAP results
-	FileLdap = "ldap.csv"
+	FileStartTLSLDAP = "starttls_ldap.csv"
 )
 
 type ScanResult struct {

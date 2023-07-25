@@ -7,20 +7,16 @@ import (
 	"time"
 )
 
-type LDAPResult struct {
+type StartTLSLDAPResult struct {
 	HasStartTLS bool
 	LdapError   error
 }
 
-type StartTLSLDAPResult struct {
-	HasStartTLS bool
+func (t *StartTLSLDAPResult) GetCsvFileName() string {
+	return FileStartTLSLDAP
 }
 
-func (t *LDAPResult) GetCsvFileName() string {
-	return FileLdap
-}
-
-func (t *LDAPResult) GetCsvHeader() []string {
+func (t *StartTLSLDAPResult) GetCsvHeader() []string {
 	return []string{
 		"id",
 		"starttls",
@@ -28,7 +24,7 @@ func (t *LDAPResult) GetCsvHeader() []string {
 	}
 }
 
-func (t *LDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
+func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
 	errorStr := ""
 	if t.LdapError != nil {
 		errorStr = t.LdapError.Error()
