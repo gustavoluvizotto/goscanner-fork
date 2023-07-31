@@ -3,7 +3,6 @@ package results
 import (
 	"encoding/csv"
 	"github.com/tumi8/goscanner/scanner/misc"
-	"strconv"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResu
 
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
-		strconv.FormatBool(t.HasStartTLS),
+		misc.ToCompactBinary(&t.HasStartTLS),
 		errorStr,
 	})
 
