@@ -74,7 +74,9 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	}
 
 	packet = ber.DecodePacket(packetResponse)
-	log.Debug().Str("responsePacket", packet.Data.String()).Msg("Got response")
+	if packet != nil {
+		log.Debug().Str("responsePacket", packet.Data.String()).Msg("Got response")
+	}
 
 	err = ldap.GetLDAPError(packet)
 	if err != nil {
