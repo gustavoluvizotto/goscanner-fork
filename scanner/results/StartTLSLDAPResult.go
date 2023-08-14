@@ -40,10 +40,11 @@ func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResu
 		errorStr = t.LdapError.Error()
 	}
 
+	// "id", "starttls", "ldap_server", "responded_to_starttls", "result_code", "matched_dn", "diagnostic_message", "error_data",
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
-		misc.ToCompactBinary(&t.IsLDAPServer),
 		misc.ToCompactBinary(&t.HasStartTLS),
+		misc.ToCompactBinary(&t.IsLDAPServer),
 		misc.ToCompactBinary(&t.HasRespondedStartTLS),
 		strconv.Itoa(int(t.ResultCode)),
 		t.MatchedDN,

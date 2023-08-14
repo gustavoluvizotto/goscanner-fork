@@ -84,33 +84,35 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	if err != nil {
 		var ldapError *ldap.Error
 		errors.As(err, &ldapError)
-		if ldapError.Err.Error() != "Invalid packet format" {
+		if ldapError.ResultCode == ldap.ErrorNetwork || ldapError.ResultCode == ldap.ErrorUnexpectedResponse {
+			sTlsLdapResult.IsLDAPServer = false
+		} else {
 			sTlsLdapResult.IsLDAPServer = true
 		}
 		sTlsLdapResult.ResultCode = ldapError.ResultCode
 		sTlsLdapResult.MatchedDN = ldapError.MatchedDN
 		sTlsLdapResult.DiagnosticMessage = ldapError.Err.Error()
+		_ = respondedLDAPStartTLSOID(packet, target, &sTlsLdapResult)
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
 		return conn, err
 	}
+
 	sTlsLdapResult = *GetLDAPResults(packet)
-
-	err = hasLDAPStartTLSOID(packet)
-	if err != nil {
-		log.Debug().Str("IP", target.Ip).Msg(err.Error())
-	} else {
-		sTlsLdapResult.HasRespondedStartTLS = true
-	}
-
+	err = respondedLDAPStartTLSOID(packet, target, &sTlsLdapResult)
 	addResult(result, synStart, synEnd, err, &sTlsLdapResult)
+
 	return conn, nil
 }
 
-func hasLDAPStartTLSOID(packet *ber.Packet) error {
+func respondedLDAPStartTLSOID(packet *ber.Packet, target *Target, sTlsLdapResult *results.StartTLSLDAPResult) error {
 	if len(packet.Children) >= 2 && strings.Contains(packet.Children[1].Data.String(), ldapStartTLSOID) {
+		sTlsLdapResult.HasRespondedStartTLS = true
 		return nil
+	} else {
+		err := errors.New("the server did not responded with StartTLS") // not conforming with rfc4511#section-4.14.2
+		log.Debug().Str("IP", target.Ip).Msg(err.Error())
+		return err
 	}
-	return errors.New("the server did not responded with StartTLS") // not conforming with rfc4511#section-4.14.2
 }
 
 func (s *StartTLSLDAP) nextMessageID() uint32 {
