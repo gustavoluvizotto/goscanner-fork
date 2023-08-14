@@ -3,12 +3,18 @@ package results
 import (
 	"encoding/csv"
 	"github.com/tumi8/goscanner/scanner/misc"
+	"strconv"
 	"time"
 )
 
 type StartTLSLDAPResult struct {
-	HasStartTLS bool
-	LdapError   error
+	HasStartTLS          bool
+	IsLDAPServer         bool
+	HasRespondedStartTLS bool
+	ResultCode           uint16
+	MatchedDN            string
+	DiagnosticMessage    string
+	LdapError            error
 }
 
 func (t *StartTLSLDAPResult) GetCsvFileName() string {
@@ -19,6 +25,11 @@ func (t *StartTLSLDAPResult) GetCsvHeader() []string {
 	return []string{
 		"id",
 		"starttls",
+		"ldap_server",
+		"responded_to_starttls",
+		"result_code",
+		"matched_dn",
+		"diagnostic_message",
 		"error_data",
 	}
 }
@@ -31,7 +42,12 @@ func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResu
 
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
+		misc.ToCompactBinary(&t.IsLDAPServer),
 		misc.ToCompactBinary(&t.HasStartTLS),
+		misc.ToCompactBinary(&t.HasRespondedStartTLS),
+		strconv.Itoa(int(t.ResultCode)),
+		t.MatchedDN,
+		t.DiagnosticMessage,
 		errorStr,
 	})
 

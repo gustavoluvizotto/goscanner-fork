@@ -1,7 +1,9 @@
 package scans
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/rs/zerolog/log"
@@ -55,7 +57,7 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	request := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ldap.ApplicationExtendedRequest, nil, "Start TLS")
 	request.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, ldapStartTLSOID, "TLS Extended Command"))
 	packet.AppendChild(request)
-	log.Debug().Str("requestPacket", packet.Data.String()).Msg("Send request")
+	log.Debug().Str("hex", hex.EncodeToString(packet.Data.Bytes())).Str("requestPacket", packet.Data.String()).Msg("Sent request")
 
 	n, err := conn.Write(packet.Bytes())
 	sTlsLdapResult := results.StartTLSLDAPResult{HasStartTLS: false}
@@ -75,21 +77,31 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 
 	packet = ber.DecodePacket(packetResponse)
 	if packet != nil {
-		log.Debug().Str("responsePacket", packet.Data.String()).Msg("Got response")
+		log.Debug().Str("hex", hex.EncodeToString(packet.Data.Bytes())).Str("responsePacket", packet.Data.String()).Msg("Got response")
 	}
 
 	err = ldap.GetLDAPError(packet)
 	if err != nil {
+		var ldapError *ldap.Error
+		errors.As(err, &ldapError)
+		if ldapError.Err.Error() != "Invalid packet format" {
+			sTlsLdapResult.IsLDAPServer = true
+		}
+		sTlsLdapResult.ResultCode = ldapError.ResultCode
+		sTlsLdapResult.MatchedDN = ldapError.MatchedDN
+		sTlsLdapResult.DiagnosticMessage = ldapError.Err.Error()
 		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
 		return conn, err
 	}
+	sTlsLdapResult = *GetLDAPResults(packet)
 
 	err = hasLDAPStartTLSOID(packet)
 	if err != nil {
 		log.Debug().Str("IP", target.Ip).Msg(err.Error())
+	} else {
+		sTlsLdapResult.HasRespondedStartTLS = true
 	}
 
-	sTlsLdapResult.HasStartTLS = true
 	addResult(result, synStart, synEnd, err, &sTlsLdapResult)
 	return conn, nil
 }
@@ -118,4 +130,17 @@ func addResult(result *results.ScanResult, synStart time.Time, synEnd time.Time,
 		ScanEnd:  time.Now().UTC(),
 		Result:   sTlsLdapResult,
 	})
+}
+
+func GetLDAPResults(packet *ber.Packet) *results.StartTLSLDAPResult {
+	response := packet.Children[1]
+	sTlsLdapResult := results.StartTLSLDAPResult{
+		HasStartTLS:       true,
+		IsLDAPServer:      true,
+		ResultCode:        uint16(response.Children[0].Value.(int64)),
+		MatchedDN:         response.Children[1].Value.(string),
+		DiagnosticMessage: fmt.Sprintf("%s", response.Children[2].Value.(string)),
+	}
+
+	return &sTlsLdapResult
 }
