@@ -105,7 +105,7 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 }
 
 func respondedLDAPStartTLSOID(packet *ber.Packet, target *Target, sTlsLdapResult *results.StartTLSLDAPResult) error {
-	if len(packet.Children) >= 2 && strings.Contains(packet.Children[1].Data.String(), ldapStartTLSOID) {
+	if len(packet.Children) >= 2 && packet.Children[1] != nil && strings.Contains(packet.Children[1].Data.String(), ldapStartTLSOID) {
 		sTlsLdapResult.HasRespondedStartTLS = true
 		return nil
 	} else {
