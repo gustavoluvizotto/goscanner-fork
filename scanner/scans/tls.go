@@ -34,11 +34,22 @@ func (s *TLSScan) Init(opts *misc.Options, keylogFile io.Writer) {
 }
 
 // Scan performs the actual TLS scan and adds results to the target
-func (s *TLSScan) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration, synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (net.Conn, error) {
+func (s *TLSScan) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration, synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (rconn net.Conn, err error) {
+	log.Debug().Str("target", target.Ip).Msg("TLS scan started!")
+
 	serverName := target.Domain
 	cache := tls.NewLRUClientSessionCache(1)
 
 	tlsConn, err := scanTLS(conn, serverName, timeout, 0, cache, nil, nil, target.CHName, s.keyLogFile, nil)
+	defer func() {
+		if err != nil && conn != nil {
+			// starttls connection must be finished so the next scans may succeed
+			rconn, _, _, err = reconnect(conn, timeout)
+			if err != nil {
+				rconn = nil // could not reconnect, then stopping
+			}
+		}
+	}()
 	if tlsConn == nil {
 		return nil, err
 	}

@@ -17,12 +17,11 @@ import (
 	"time"
 )
 
-const (
-	ldapStartTLSOID = "1.3.6.1.4.1.1466.20037"
-)
+const ldapStartTLSOID = "1.3.6.1.4.1.1466.20037"
+
+var messageID uint32
 
 type StartTLSLDAP struct {
-	messageID  uint32
 	keyLogFile io.Writer
 }
 
@@ -36,6 +35,7 @@ func (s *StartTLSLDAP) GetDefaultPort() int {
 
 func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration,
 	synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (rconn net.Conn, err error) {
+	log.Debug().Str("target", target.Ip).Msg("StartTLS LDAP scan started!")
 
 	defer func() {
 		if err != nil && conn != nil {
@@ -48,84 +48,69 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	}()
 
 	if conn == nil {
-		log.Error().Str("ServerName", target.Domain).Msg("TCP Connection was nil")
+		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
 		return nil, errors.New("TCP Connection was nil")
 	}
 
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
-	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, s.nextMessageID(), "MessageID"))
+	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, nextMessageID(), "MessageID"))
 	request := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ldap.ApplicationExtendedRequest, nil, "Start TLS")
 	request.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, ldapStartTLSOID, "TLS Extended Command"))
 	packet.AppendChild(request)
 	log.Debug().Str("hex", hex.EncodeToString(packet.Data.Bytes())).Str("requestPacket", packet.Data.String()).Msg("Sent request")
 
+	sTlsLdapResult := results.StartTLSLDAPResult{}
+	response, conn, err := writeRequestReadDecodeResponse(conn, packet)
+	if err != nil {
+		addLDAPStartTLSResult(result, synStart, synEnd, err, &sTlsLdapResult)
+		return conn, err
+	}
+
+	sTlsLdapResult.LdapResult, err = parseLDAPResponse(response)
+	if err == nil {
+		sTlsLdapResult.HasStartTLS = true
+	}
+	oidErr := respondedWithOID(response, ldapStartTLSOID)
+	if oidErr == nil {
+		sTlsLdapResult.HasRespondedStartTLS = true
+	}
+	addLDAPStartTLSResult(result, synStart, synEnd, err, &sTlsLdapResult)
+
+	return conn, nil
+}
+
+func nextMessageID() uint32 {
+	messageID++
+	if messageID == 0 {
+		// avoid overflow of messageID and return 0 (see rfc4511#section-4.1.1.1 for messageID = 0)
+		messageID++
+	}
+	return messageID
+}
+
+func writeRequestReadDecodeResponse(conn net.Conn, packet *ber.Packet) (*ber.Packet, net.Conn, error) {
 	n, err := conn.Write(packet.Bytes())
-	sTlsLdapResult := results.StartTLSLDAPResult{HasStartTLS: false}
 	if err != nil {
 		log.Debug().Str("n", strconv.FormatInt(int64(n), 10)).Msg("write n bytes")
-		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return conn, err
+		return nil, conn, err
 	}
 
 	packetResponse := make([]byte, 1024) // typical right response is the ldapStartTLSOID, rfc4511#section-4.14.2
 	n, err = conn.Read(packetResponse)
 	if err != nil {
 		log.Debug().Str("n", strconv.FormatInt(int64(n), 10)).Msg("read n bytes")
-		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return conn, err
+		return nil, conn, err
 	}
 
-	packet = ber.DecodePacket(packetResponse)
-	if packet != nil {
+	response := ber.DecodePacket(packetResponse)
+	if response != nil {
 		log.Debug().Str("hex", hex.EncodeToString(packet.Data.Bytes())).Str("responsePacket", packet.Data.String()).Msg("Got response")
 	}
-
-	err = ldap.GetLDAPError(packet)
-	if err != nil {
-		var ldapError *ldap.Error
-		errors.As(err, &ldapError)
-		if ldapError.ResultCode == ldap.ErrorNetwork || ldapError.ResultCode == ldap.ErrorUnexpectedResponse {
-			sTlsLdapResult.IsLDAPServer = false
-		} else {
-			sTlsLdapResult.IsLDAPServer = true
-		}
-		sTlsLdapResult.ResultCode = ldapError.ResultCode
-		sTlsLdapResult.MatchedDN = ldapError.MatchedDN
-		sTlsLdapResult.DiagnosticMessage = ldapError.Err.Error()
-		_ = respondedLDAPStartTLSOID(packet, target, &sTlsLdapResult)
-		addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-		return conn, err
-	}
-
-	sTlsLdapResult = *GetLDAPResults(packet)
-	err = respondedLDAPStartTLSOID(packet, target, &sTlsLdapResult)
-	addResult(result, synStart, synEnd, err, &sTlsLdapResult)
-
-	return conn, nil
+	return response, conn, nil
 }
 
-func respondedLDAPStartTLSOID(packet *ber.Packet, target *Target, sTlsLdapResult *results.StartTLSLDAPResult) error {
-	if packet != nil && len(packet.Children) >= 2 && packet.Children[1] != nil && strings.Contains(packet.Children[1].Data.String(), ldapStartTLSOID) {
-		sTlsLdapResult.HasRespondedStartTLS = true
-		return nil
-	} else {
-		err := errors.New("the server did not responded with StartTLS") // not conforming with rfc4511#section-4.14.2
-		log.Debug().Str("IP", target.Ip).Msg(err.Error())
-		return err
-	}
-}
-
-func (s *StartTLSLDAP) nextMessageID() uint32 {
-	s.messageID++
-	if s.messageID == 0 {
-		// avoid overflow of messageID and return 0 (see rfc4511#section-4.1.1.1 for messageID = 0)
-		s.messageID++
-	}
-	return s.messageID
-}
-
-func addResult(result *results.ScanResult, synStart time.Time, synEnd time.Time, err error, sTlsLdapResult *results.StartTLSLDAPResult) {
-	sTlsLdapResult.LdapError = err
+func addLDAPStartTLSResult(result *results.ScanResult, synStart time.Time, synEnd time.Time, err error, sTlsLdapResult *results.StartTLSLDAPResult) {
+	sTlsLdapResult.LdapResult.LdapError = err
 	result.AddResult(results.ScanSubResult{
 		SynStart: synStart,
 		SynEnd:   synEnd,
@@ -134,15 +119,42 @@ func addResult(result *results.ScanResult, synStart time.Time, synEnd time.Time,
 	})
 }
 
-func GetLDAPResults(packet *ber.Packet) *results.StartTLSLDAPResult {
+func parseLDAPResponse(response *ber.Packet) (results.LDAPGeneralResult, error) {
+	ldapResult := results.LDAPGeneralResult{}
+	err := ldap.GetLDAPError(response)
+	if err != nil {
+		var ldapError *ldap.Error
+		errors.As(err, &ldapError)
+		if ldapError.ResultCode == ldap.ErrorNetwork || ldapError.ResultCode == ldap.ErrorUnexpectedResponse {
+			ldapResult.IsLDAPServer = false
+		} else {
+			ldapResult.IsLDAPServer = true
+		}
+		ldapResult.ResultCode = ldapError.ResultCode
+		ldapResult.MatchedDN = ldapError.MatchedDN
+		ldapResult.DiagnosticMessage = ldapError.Err.Error()
+	} else {
+		ldapResult = *getLDAPGeneralResults(response)
+	}
+	return ldapResult, err
+}
+
+func getLDAPGeneralResults(packet *ber.Packet) *results.LDAPGeneralResult {
 	response := packet.Children[1]
-	sTlsLdapResult := results.StartTLSLDAPResult{
-		HasStartTLS:       true,
-		IsLDAPServer:      true,
+	ldapResult := results.LDAPGeneralResult{IsLDAPServer: true,
 		ResultCode:        uint16(response.Children[0].Value.(int64)),
 		MatchedDN:         response.Children[1].Value.(string),
 		DiagnosticMessage: fmt.Sprintf("%s", response.Children[2].Value.(string)),
 	}
 
-	return &sTlsLdapResult
+	return &ldapResult
+}
+
+func respondedWithOID(packet *ber.Packet, oid string) error {
+	if packet != nil && len(packet.Children) >= 2 && packet.Children[1] != nil && strings.Contains(packet.Children[1].Data.String(), oid) {
+		return nil
+	} else {
+		err := errors.New("the server did not responded with OID " + oid)
+		return err
+	}
 }

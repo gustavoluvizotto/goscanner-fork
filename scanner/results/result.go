@@ -27,6 +27,7 @@ const (
 	FileKeyLog      = "tls-keylog"
 
 	FileStartTLSLDAP = "starttls_ldap.csv"
+	FileLDAP         = "ldap.csv"
 )
 
 type ScanResult struct {
