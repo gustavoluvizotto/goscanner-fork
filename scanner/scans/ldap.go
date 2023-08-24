@@ -1,6 +1,7 @@
 package scans
 
 import (
+	"encoding/hex"
 	"errors"
 	ber "github.com/go-asn1-ber/asn1-ber"
 	"github.com/go-ldap/ldap/v3"
@@ -48,6 +49,7 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 	// simple authentication, AuthenticationChoice := [0] OCTET STRING
 	request.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, password, "Password"))
 	packet.AppendChild(request)
+	log.Debug().Str("hex", hex.EncodeToString(packet.Data.Bytes())).Str("requestPacket", packet.Data.String()).Msg("Sent request")
 
 	ldapResult := results.LDAPResult{}
 	response, conn, err := writeRequestReadDecodeResponse(conn, packet)
