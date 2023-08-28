@@ -38,7 +38,7 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 		_ = conn.Close()
 	}(conn)
 
-	unusualVersion := 4
+	unusualVersion := 3
 	username := ""
 	password := ""
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
