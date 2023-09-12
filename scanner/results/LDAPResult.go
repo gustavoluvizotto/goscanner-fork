@@ -5,6 +5,7 @@ import (
 	ber "github.com/go-asn1-ber/asn1-ber"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -42,27 +43,30 @@ func (t *LDAPResult) GetCsvHeader() []string {
 }
 
 func (t *LDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
+	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
+	diagnosticMessage := strings.Replace(t.LdapResult.DiagnosticMessage, "\n", " ", -1)
+
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
-		errorStr = t.LdapResult.LdapError.Error()
+		errorStr = strings.Replace(t.LdapResult.LdapError.Error(), "\n", " ", -1)
 	}
 
 	unbindResponse := ""
 	if t.UnbindResponse != nil {
-		unbindResponse = t.UnbindResponse.Data.String()
+		unbindResponse = strings.Replace(t.UnbindResponse.Data.String(), "\n", " ", -1)
 	}
 
 	unbindErrorStr := ""
 	if t.UnbindError != nil {
-		unbindErrorStr = t.UnbindError.Error()
+		unbindErrorStr = strings.Replace(t.UnbindError.Error(), "\n", " ", -1)
 	}
 
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
 		misc.ToCompactBinary(&t.LdapResult.IsLDAPServer),
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
-		t.LdapResult.MatchedDN,
-		t.LdapResult.DiagnosticMessage,
+		matchedDn,
+		diagnosticMessage,
 		errorStr,
 		misc.ToCompactBinary(&t.HasRespondedNoticeOfDisconnection),
 		unbindResponse,

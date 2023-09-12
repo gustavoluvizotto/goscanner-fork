@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,9 +32,12 @@ func (t *StartTLSLDAPResult) GetCsvHeader() []string {
 }
 
 func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
+	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
+	diagnosticMessage := strings.Replace(t.LdapResult.DiagnosticMessage, "\n", " ", -1)
+
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
-		errorStr = t.LdapResult.LdapError.Error()
+		errorStr = strings.Replace(t.LdapResult.LdapError.Error(), "\n", " ", -1)
 	}
 
 	// "id", "starttls", "ldap_server", "responded_to_starttls", "result_code", "matched_dn", "diagnostic_message", "error_data",
@@ -43,8 +47,8 @@ func (t *StartTLSLDAPResult) WriteCsv(writer *csv.Writer, parentResult *ScanResu
 		misc.ToCompactBinary(&t.LdapResult.IsLDAPServer),
 		misc.ToCompactBinary(&t.HasRespondedStartTLS),
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
-		t.LdapResult.MatchedDN,
-		t.LdapResult.DiagnosticMessage,
+		matchedDn,
+		diagnosticMessage,
 		errorStr,
 	})
 
