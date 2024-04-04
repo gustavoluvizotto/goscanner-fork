@@ -7,3 +7,5 @@ client-hellos
 createch-bin
 tmp
 .DS_Store
+go_build_github_com_tumi8_goscanner
+output.log

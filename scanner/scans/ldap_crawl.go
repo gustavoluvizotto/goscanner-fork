@@ -36,6 +36,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 
 	// TODO receive isTLS bool from the pipeline
 	l := ldap.NewConn(conn, false)
+	l.Start()
 	ldapResult := results.LDAPResult{}
 
 	// rfc4513#section-5.1.1, Anonymous Bind
@@ -50,10 +51,13 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		}
 	}(l)
 
-	filter := "(objectClass=*)"
-	attributes := []string{"subschemaSubentry"}
+	// IPs:
+	filter := "(|(objectClass=*)(cn=*))" //"(|(objectClass=subschema))"
+	attributes := []string{"*"}          //[]string{"*"} //subschemaSubentry //"dn", "cn", "o", "ou"
+	baseDN := "dc=utwente,dc=nl"         // TODO what is the baseDN?
+	//controls := []ldap.Control{}
 	req := ldap.SearchRequest{
-		BaseDN:       "dc=*", // TODO what is the baseDN?
+		BaseDN:       baseDN,
 		Scope:        ldap.ScopeWholeSubtree,
 		DerefAliases: ldap.DerefAlways,
 		SizeLimit:    0,
@@ -61,13 +65,20 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		TypesOnly:    false,
 		Filter:       filter,
 		Attributes:   attributes,
-		Controls:     []ldap.Control{},
+		Controls:     nil,
 	}
-	ent, err := l.Search(&req)
-	for i := range ent.Entries {
-		ent.Entries[i].PrettyPrint(4)
+	ents, err := l.Search(&req)
+	if ents != nil {
+		//fmt.Println(ent)
+		for i, ent := range ents.Entries {
+			ent.PrettyPrint(4)
+			if i == 10 {
+				break
+			}
+		}
 	}
-
+	e := l.GetLastError()
+	print(e)
 	addLDAPResult(result, synStart, synEnd, err, &ldapResult)
 
 	return conn, nil

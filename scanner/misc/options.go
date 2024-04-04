@@ -32,7 +32,7 @@ type Options struct {
 
 	SSH bool `long:"ssh" description:"Scan SSH instead of TLS"`
 
-	Scans      []string `short:"r" long:"scans" description:"A list of scans to run. Choose of starttls_ldap,tls,http,scvs,ssh,ldap. Some can be combined like tls,http for https scans. Order is important"`
+	Scans      []string `short:"r" long:"scans" description:"A list of scans to run. Choose of starttls_ldap,tls,http,scvs,ssh,ldap,ldap_crawl. Some can be combined like tls,http for https scans. Order is important"`
 	MemProfile bool     `long:"mem-profile" description:"Dump Mem Profile Files every 5 min to output directory"`
 
 	TLSExtendedExport           bool `long:"tls-extended-output" description:"Save a more verbose output of the tls scan, including tls extensions and fingerprint"`
