@@ -28,6 +28,8 @@ const (
 
 	FileStartTLSLDAP = "starttls_ldap.csv"
 	FileLDAP         = "ldap.csv"
+	FileLDAPSearch   = "ldap_search.csv"
+	FileLDAPSchema   = "ldap_schema.csv"
 )
 
 type ScanResult struct {
