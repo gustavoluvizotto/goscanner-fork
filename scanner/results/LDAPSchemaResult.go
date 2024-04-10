@@ -38,7 +38,6 @@ func (t *LDAPSchemaResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult
 		log.Err(err).Str("address", parentResult.Address).Msg("Could not split address into host and port parts.")
 	}
 	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
-	diagnosticMessage := strings.Replace(t.LdapResult.DiagnosticMessage, "\n", " ", -1)
 
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
@@ -51,10 +50,8 @@ func (t *LDAPSchemaResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult
 		parentResult.Id.ToString(),
 		ip,
 		port,
-		misc.ToCompactBinary(&t.LdapResult.IsLDAPServer),
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
 		matchedDn,
-		diagnosticMessage,
 		errorStr,
 		attributeNames,
 		attributeValues,

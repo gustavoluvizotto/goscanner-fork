@@ -28,7 +28,7 @@ const (
 
 	FileStartTLSLDAP = "starttls_ldap.csv"
 	FileLDAP         = "ldap.csv"
-	FileLDAPSearch   = "ldap_search.csv"
+	FileLDAPRootDSE  = "ldap_root_dse.csv"
 	FileLDAPSchema   = "ldap_schema.csv"
 )
 

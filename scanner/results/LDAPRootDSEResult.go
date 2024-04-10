@@ -15,16 +15,16 @@ type AttributeNameValues struct {
 	AttributeValues []string
 }
 
-type LDAPSearchResult struct {
+type LDAPRootDSEResult struct {
 	LdapResult              LDAPGeneralResult
 	AttributeNameValuesList []AttributeNameValues
 }
 
-func (t *LDAPSearchResult) GetCsvFileName() string {
-	return FileLDAPSearch
+func (t *LDAPRootDSEResult) GetCsvFileName() string {
+	return FileLDAPRootDSE
 }
 
-func (t *LDAPSearchResult) GetCsvHeader() []string {
+func (t *LDAPRootDSEResult) GetCsvHeader() []string {
 	return []string{
 		"id",
 		"ip",
@@ -37,13 +37,12 @@ func (t *LDAPSearchResult) GetCsvHeader() []string {
 	}
 }
 
-func (t *LDAPSearchResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
+func (t *LDAPRootDSEResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult, synStart time.Time, synEnd time.Time, scanEnd time.Time, skipErrors bool, certCache *misc.CertCache) error {
 	ip, port, err := net.SplitHostPort(parentResult.Address)
 	if err != nil {
 		log.Err(err).Str("address", parentResult.Address).Msg("Could not split address into host and port parts.")
 	}
 	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
-	diagnosticMessage := strings.Replace(t.LdapResult.DiagnosticMessage, "\n", " ", -1)
 
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
@@ -56,10 +55,8 @@ func (t *LDAPSearchResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult
 		parentResult.Id.ToString(),
 		ip,
 		port,
-		misc.ToCompactBinary(&t.LdapResult.IsLDAPServer),
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
 		matchedDn,
-		diagnosticMessage,
 		errorStr,
 		attributeNames,
 		attributeValues,
@@ -71,10 +68,10 @@ func LDAPAttrFormat(t []AttributeNameValues) (string, string) {
 	attributeNames := "["
 	attributeValues := "["
 	for _, nameValues := range t {
-		attributeNames += "\"" + nameValues.AttributeName + "\"" + ","
+		attributeNames += "'" + strings.Replace(nameValues.AttributeName, "'", " ", -1) + "'" + ","
 		attributeValues += "["
 		for _, value := range nameValues.AttributeValues {
-			attributeValues += "\"" + value + "\"" + ","
+			attributeValues += "'" + strings.Replace(value, "'", " ", -1) + "'" + ","
 		}
 		attributeValues += "],"
 	}

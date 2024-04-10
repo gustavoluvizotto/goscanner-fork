@@ -80,42 +80,50 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		Result:   &ldapSchemaResult,
 	})
 
-	// other search
-	/*
-		// MS AD attributes from ldap_ms_ad.json (extracted from MS website)
-		// ldap_oid_dict.json: https://ldap.com/ldap-oid-reference-guide/
-	*/
+	// rfc4512#section-5.1 root dse search
+	// https://ldap.com/dit-and-the-ldap-root-dse/
+	// https://nmap.org/nsedoc/scripts/ldap-rootdse.html
+	// https://learn.microsoft.com/en-us/windows/win32/adschema/rootdse
 	filter = "(objectClass=*)"
-	baseDN = "dc=utwente,dc=nl" // TODO where to get the baseDN? fhms gets from cmd args
-	scope = ldap.ScopeWholeSubtree
+	baseDN = ""
+	scope = ldap.ScopeBaseObject
+	// "It is noted that root DSE attributes are operational and, like other operational attributes,
+	// are not returned in search requests unless requested by name."
 	attributes = []string{
+		"altServer",
 		"namingContexts",
-		"defaultNamingContext",
-		"supportedLDAPPolicies",
-		"supportedLDAPVersion",
-		"supportedCapabilities",
-		"supportedExtension",
-		"subschemaSubentry",
 		"supportedControl",
+		"supportedExtension",
+		"supportedFeatures",
+		"supportedLDAPVersion",
+		"supportedSASLMechanisms",
+		"supportedAuthPasswordSchemes",
 		"vendorName",
 		"vendorVersion",
-		"o", "ou"}
-	limit = 50
+		"supportedLDAPPolicies",
+		"supportedCapabilities",
+		"ldapServiceName",
+		"isGlobalCatalogReady",
+		"dnsHostName",
+		"serverName",
+		"subschemaSubentry",
+		"o", "ou"} // additional attributes - trying to get more information
+	limit = 0
 	attrNameVals, err = SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
 
-	ldapSearchResult := results.LDAPSearchResult{}
+	ldapRootDSEResult := results.LDAPRootDSEResult{}
 	errors.As(err, &ldapError)
 	if ldapError != nil {
 		ldapSchemaResult.LdapResult.ResultCode = ldapError.ResultCode
 	}
-	ldapSearchResult.LdapResult.LdapError = err
-	ldapSearchResult.AttributeNameValuesList = attrNameVals
-	ldapSearchResult.LdapResult.MatchedDN = baseDN
+	ldapRootDSEResult.LdapResult.LdapError = err
+	ldapRootDSEResult.AttributeNameValuesList = attrNameVals
+	ldapRootDSEResult.LdapResult.MatchedDN = baseDN
 	result.AddResult(results.ScanSubResult{
 		SynStart: synStart,
 		SynEnd:   synEnd,
 		ScanEnd:  time.Now().UTC(),
-		Result:   &ldapSearchResult,
+		Result:   &ldapRootDSEResult,
 	})
 	return conn, nil
 }
@@ -123,8 +131,8 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter string, attributes []string, limit int) ([]results.AttributeNameValues, error) {
 	req := ldap.SearchRequest{
 		BaseDN:       baseDN,
-		Scope:        scope,            //ldap.ScopeWholeSubtree ScopeBaseObject
-		DerefAliases: ldap.DerefAlways, //ldap.DerefAlways NeverDerefAliases
+		Scope:        scope,
+		DerefAliases: ldap.DerefAlways,
 		SizeLimit:    0,
 		TimeLimit:    0,
 		TypesOnly:    false,
@@ -142,7 +150,6 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 					AttributeValues: attr.Values,
 				})
 			}
-			//ent.PrettyPrint(4)
 			if limit != 0 && i == limit {
 				break
 			}
