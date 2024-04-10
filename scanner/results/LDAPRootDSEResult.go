@@ -68,10 +68,12 @@ func LDAPAttrFormat(t []AttributeNameValues) (string, string) {
 	attributeNames := "["
 	attributeValues := "["
 	for _, nameValues := range t {
-		attributeNames += "'" + strings.Replace(nameValues.AttributeName, "'", " ", -1) + "'" + ","
+		convAttrName := strings.ToValidUTF8(strings.Replace(nameValues.AttributeName, "'", " ", -1), " ")
+		attributeNames += "'" + convAttrName + "'" + ","
 		attributeValues += "["
 		for _, value := range nameValues.AttributeValues {
-			attributeValues += "'" + strings.Replace(value, "'", " ", -1) + "'" + ","
+			convAttrVal := strings.ToValidUTF8(strings.Replace(value, "'", " ", -1), " ")
+			attributeValues += "'" + convAttrVal + "'" + ","
 		}
 		attributeValues += "],"
 	}

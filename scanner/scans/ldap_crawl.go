@@ -30,9 +30,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
 		return nil, errors.New("TCP Connection was nil")
 	}
-	defer func(conn net.Conn) {
-		_ = conn.Close()
-	}(conn)
+	defer conn.Close()
 
 	isTls := false
 	for _, r := range result.SubResults {
@@ -49,12 +47,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 	if err != nil {
 		return conn, err
 	}
-	defer func(l *ldap.Conn) {
-		err := l.Unbind()
-		if err != nil {
-			log.Error().Err(err).Msg("Error unbinding")
-		}
-	}(ldapConn)
+	defer ldapConn.Unbind()
 
 	// search schema (rfc4512#section-4.4)
 	filter := "(objectClass=subschema)"
