@@ -12,7 +12,7 @@ import (
 
 type LDAPSchemaResult struct {
 	LdapResult              LDAPGeneralResult
-	AttributeNameValuesList []AttributeNameValues
+	AttributeNameValuesList []LDAPSearchEntry
 }
 
 func (t *LDAPSchemaResult) GetCsvFileName() string {
@@ -25,8 +25,8 @@ func (t *LDAPSchemaResult) GetCsvHeader() []string {
 		"ip",
 		"port",
 		"result_code",
-		"matched_dn",
 		"error_data",
+		"matched_dns",
 		"attribute_names",
 		"attribute_values_list",
 	}
@@ -37,22 +37,21 @@ func (t *LDAPSchemaResult) WriteCsv(writer *csv.Writer, parentResult *ScanResult
 	if err != nil {
 		log.Err(err).Str("address", parentResult.Address).Msg("Could not split address into host and port parts.")
 	}
-	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
 
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
 		errorStr = strings.Replace(t.LdapResult.LdapError.Error(), "\n", " ", -1)
 	}
 
-	attributeNames, attributeValues := LDAPAttrFormat(t.AttributeNameValuesList)
+	matchedDns, attributeNames, attributeValues := LDAPAttrFormat(t.AttributeNameValuesList)
 
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
 		ip,
 		port,
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
-		matchedDn,
 		errorStr,
+		matchedDns,
 		attributeNames,
 		attributeValues,
 	})

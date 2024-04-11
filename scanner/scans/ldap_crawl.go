@@ -55,7 +55,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 	baseDN := "cn=subschema"
 	attributes := []string{"*", "+"}
 	limit := 0
-	attrNameVals, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
+	schemaEntries, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
 
 	ldapSchemaResult := results.LDAPSchemaResult{}
 	var ldapError *ldap.Error
@@ -64,7 +64,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		ldapSchemaResult.LdapResult.ResultCode = ldapError.ResultCode
 	}
 	ldapSchemaResult.LdapResult.LdapError = err
-	ldapSchemaResult.AttributeNameValuesList = attrNameVals
+	ldapSchemaResult.AttributeNameValuesList = schemaEntries
 	ldapSchemaResult.LdapResult.MatchedDN = baseDN
 	result.AddResult(results.ScanSubResult{
 		SynStart: synStart,
@@ -77,6 +77,8 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 	// https://ldap.com/dit-and-the-ldap-root-dse/
 	// https://nmap.org/nsedoc/scripts/ldap-rootdse.html
 	// https://learn.microsoft.com/en-us/windows/win32/adschema/rootdse
+	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/96f7b086-1ca3-4764-9a08-33f8f7a543db
+	// https://www.ibm.com/docs/en/svd/10.0.2?topic=dse-attributes-in-root
 	filter = "(objectClass=*)"
 	baseDN = ""
 	scope = ldap.ScopeBaseObject
@@ -99,10 +101,20 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		"isGlobalCatalogReady",
 		"dnsHostName",
 		"serverName",
+		"dsaVersionString",
 		"subschemaSubentry",
+		"ibmdirectoryversion",
+		"ibm-enabledcapabilities",
+		"ibm-supportedcapabilities",
+		"ibm-sasldigestrealmname",
+		"ibm-ldapservicename",
+		"ibm-tlsciphers",
+		"ibm-slapdTlsExtSigScheme",
+		"ibm-slapdTlsExtSigSchemeCert",
+		"ibm-slapdTlsExtSupportedGroups",
 		"o", "ou"} // additional attributes - trying to get more information
 	limit = 0
-	attrNameVals, err = SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
+	rootDseEntries, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
 
 	ldapRootDSEResult := results.LDAPRootDSEResult{}
 	errors.As(err, &ldapError)
@@ -110,7 +122,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		ldapSchemaResult.LdapResult.ResultCode = ldapError.ResultCode
 	}
 	ldapRootDSEResult.LdapResult.LdapError = err
-	ldapRootDSEResult.AttributeNameValuesList = attrNameVals
+	ldapRootDSEResult.LdapSearchEntries = rootDseEntries
 	ldapRootDSEResult.LdapResult.MatchedDN = baseDN
 	result.AddResult(results.ScanSubResult{
 		SynStart: synStart,
@@ -121,7 +133,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 	return conn, nil
 }
 
-func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter string, attributes []string, limit int) ([]results.AttributeNameValues, error) {
+func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter string, attributes []string, limit int) ([]results.LDAPSearchEntry, error) {
 	req := ldap.SearchRequest{
 		BaseDN:       baseDN,
 		Scope:        scope,
@@ -133,20 +145,23 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 		Attributes:   attributes,
 		Controls:     nil,
 	}
-	attrNameVals := make([]results.AttributeNameValues, 0)
 	searchResult, err := ldapConn.Search(&req)
+	resultEntries := make([]results.LDAPSearchEntry, 0)
 	if searchResult != nil {
+		resultEntries = make([]results.LDAPSearchEntry, len(searchResult.Entries))
 		for i, ent := range searchResult.Entries {
-			for _, attr := range ent.Attributes {
-				attrNameVals = append(attrNameVals, results.AttributeNameValues{
-					AttributeName:   attr.Name,
-					AttributeValues: attr.Values,
-				})
+			resultEntries[i].DN = ent.DN
+			resultEntries[i].Attributes = make([]results.LDAPAttribute, len(ent.Attributes))
+			for j, attr := range ent.Attributes {
+				resultEntries[i].Attributes[j] = results.LDAPAttribute{
+					Name:   attr.Name,
+					Values: attr.Values,
+				}
 			}
 			if limit != 0 && i == limit {
 				break
 			}
 		}
 	}
-	return attrNameVals, err
+	return resultEntries, err
 }

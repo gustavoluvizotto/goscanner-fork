@@ -10,14 +10,19 @@ import (
 	"time"
 )
 
-type AttributeNameValues struct {
-	AttributeName   string
-	AttributeValues []string
+type LDAPAttribute struct {
+	Name   string
+	Values []string
+}
+
+type LDAPSearchEntry struct {
+	DN         string
+	Attributes []LDAPAttribute
 }
 
 type LDAPRootDSEResult struct {
-	LdapResult              LDAPGeneralResult
-	AttributeNameValuesList []AttributeNameValues
+	LdapResult        LDAPGeneralResult
+	LdapSearchEntries []LDAPSearchEntry
 }
 
 func (t *LDAPRootDSEResult) GetCsvFileName() string {
@@ -30,8 +35,8 @@ func (t *LDAPRootDSEResult) GetCsvHeader() []string {
 		"ip",
 		"port",
 		"result_code",
-		"matched_dn",
 		"error_data",
+		"matched_dns",
 		"attribute_names",
 		"attribute_values_list",
 	}
@@ -42,42 +47,53 @@ func (t *LDAPRootDSEResult) WriteCsv(writer *csv.Writer, parentResult *ScanResul
 	if err != nil {
 		log.Err(err).Str("address", parentResult.Address).Msg("Could not split address into host and port parts.")
 	}
-	matchedDn := strings.Replace(t.LdapResult.MatchedDN, "\n", " ", -1)
 
 	errorStr := ""
 	if t.LdapResult.LdapError != nil {
 		errorStr = strings.Replace(t.LdapResult.LdapError.Error(), "\n", " ", -1)
 	}
 
-	attributeNames, attributeValues := LDAPAttrFormat(t.AttributeNameValuesList)
+	matchedDns, attributeNames, attributeValues := LDAPAttrFormat(t.LdapSearchEntries)
 
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
 		ip,
 		port,
 		strconv.Itoa(int(t.LdapResult.ResultCode)),
-		matchedDn,
 		errorStr,
+		matchedDns,
 		attributeNames,
 		attributeValues,
 	})
 
 }
 
-func LDAPAttrFormat(t []AttributeNameValues) (string, string) {
+func LDAPAttrFormat(entries []LDAPSearchEntry) (string, string, string) {
+	Dns := "["
 	attributeNames := "["
 	attributeValues := "["
-	for _, nameValues := range t {
-		convAttrName := strings.ToValidUTF8(strings.Replace(nameValues.AttributeName, "'", " ", -1), " ")
-		attributeNames += "'" + convAttrName + "'" + ","
+
+	for _, nameValues := range entries {
+		convDn := strings.ToValidUTF8(strings.Replace(nameValues.DN, "'", " ", -1), " ")
+		Dns += "'" + convDn + "'" + ","
+		attributeNames += "["
 		attributeValues += "["
-		for _, value := range nameValues.AttributeValues {
-			convAttrVal := strings.ToValidUTF8(strings.Replace(value, "'", " ", -1), " ")
-			attributeValues += "'" + convAttrVal + "'" + ","
+		for _, attr := range nameValues.Attributes {
+			convAttrName := strings.ToValidUTF8(strings.Replace(attr.Name, "'", " ", -1), " ")
+			attributeNames += "'" + convAttrName + "'" + ","
+			attributeValues += "["
+			for _, value := range attr.Values {
+				convAttrVal := strings.ToValidUTF8(strings.Replace(value, "'", " ", -1), " ")
+				attributeValues += "'" + convAttrVal + "'" + ","
+			}
+			attributeValues += "],"
 		}
+		attributeNames += "],"
 		attributeValues += "],"
 	}
+
+	Dns += "]"
 	attributeNames += "]"
 	attributeValues += "]"
-	return attributeNames, attributeValues
+	return Dns, attributeNames, attributeValues
 }
