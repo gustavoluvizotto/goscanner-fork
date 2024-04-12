@@ -30,7 +30,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
 		return nil, errors.New("TCP Connection was nil")
 	}
-	defer conn.Close()
+	// defer conn.Close() // to be able to re-use conn
 
 	isTls := false
 	for _, r := range result.SubResults {
@@ -40,7 +40,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		}
 	}
 	ldapConn := ldap.NewConn(conn, isTls)
-	ldapConn.Start()
+	ldapConn.Start() // deprecated, but it shouldn't be
 
 	// rfc4513#section-5.1.1, Anonymous Bind
 	err := ldapConn.UnauthenticatedBind("")

@@ -34,9 +34,7 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
 		return nil, errors.New("TCP Connection was nil")
 	}
-	defer func(conn net.Conn) {
-		_ = conn.Close()
-	}(conn)
+	// defer conn.Close() // to be able to re-use conn
 
 	unusualVersion := 4
 	username := ""
