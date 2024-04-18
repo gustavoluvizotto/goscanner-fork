@@ -79,11 +79,12 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 	// https://learn.microsoft.com/en-us/windows/win32/adschema/rootdse
 	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/96f7b086-1ca3-4764-9a08-33f8f7a543db
 	// https://www.ibm.com/docs/en/svd/10.0.2?topic=dse-attributes-in-root
+	// https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/reference-connect-sync-attributes-synchronized
 	filter = "(objectClass=*)"
 	baseDN = ""
 	scope = ldap.ScopeBaseObject
 	// "It is noted that root DSE attributes are operational and, like other operational attributes,
-	// are not returned in search requests unless requested by name."
+	// are not returned in search requests unless requested by name." - rfc4512
 	attributes = []string{
 		"altServer",
 		"namingContexts",
@@ -112,7 +113,20 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		"ibm-slapdTlsExtSigScheme",
 		"ibm-slapdTlsExtSigSchemeCert",
 		"ibm-slapdTlsExtSupportedGroups",
-		"o", "ou"} // additional attributes - trying to get more information
+		"extensionAttribute1",
+		"legacyExchangeDN",
+		"msExchArchiveName",
+		"msExchAssistantName",
+		"msExchAuditAdmin",
+		"msExchExtensionCustomAttribute1",
+		"msExchTeamMailboxSharePointUrl",
+		"msRTCSIP-DeploymentLocator",
+		"msRTCSIP-Line",
+		"msExchRecipientTypeDetails",
+		"msExchArchiveStatus",
+		"msExchRecipientTypeDetails",
+		"homeDirectory",
+		"o", "ou", "+"} // additional attributes - trying to get more information
 	limit = 0
 	rootDseEntries, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
 
