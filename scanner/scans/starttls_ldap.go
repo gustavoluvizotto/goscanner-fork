@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
-	"github.com/gustavoluvizotto/ldap-fork/v3"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"github.com/tumi8/goscanner/scanner/results"

@@ -2,7 +2,7 @@ package scans
 
 import (
 	"errors"
-	"github.com/gustavoluvizotto/ldap-fork/v3"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"github.com/tumi8/goscanner/scanner/results"
@@ -12,19 +12,19 @@ import (
 	"time"
 )
 
-type LDAPCrawlScan struct {
+type LDAPMetadataScan struct {
 	keyLogFile io.Writer
 }
 
-func (s *LDAPCrawlScan) Init(opts *misc.Options, keylogFile io.Writer) {
+func (s *LDAPMetadataScan) Init(opts *misc.Options, keylogFile io.Writer) {
 	s.keyLogFile = keylogFile
 }
 
-func (s *LDAPCrawlScan) GetDefaultPort() int {
+func (s *LDAPMetadataScan) GetDefaultPort() int {
 	return 389
 }
 
-func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration, synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (net.Conn, error) {
+func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.ScanResult, timeout time.Duration, synStart time.Time, synEnd time.Time, limiter *rate.Limiter) (net.Conn, error) {
 	log.Debug().Str("target", target.Ip).Msg("LDAP crawl scan started!")
 	if conn == nil {
 		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
@@ -40,7 +40,7 @@ func (s *LDAPCrawlScan) Scan(conn net.Conn, target *Target, result *results.Scan
 		}
 	}
 	ldapConn := ldap.NewConn(conn, isTls)
-	ldapConn.Start() // deprecated, but it shouldn't be
+	ldapConn.Start()
 
 	// rfc4513#section-5.1.1, Anonymous Bind
 	err := ldapConn.UnauthenticatedBind("")

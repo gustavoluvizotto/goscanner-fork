@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	ber "github.com/go-asn1-ber/asn1-ber"
-	"github.com/gustavoluvizotto/ldap-fork/v3"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"github.com/tumi8/goscanner/scanner/results"
@@ -69,7 +69,8 @@ func (s *LDAPScan) Scan(conn net.Conn, target *Target, result *results.ScanResul
 		"... Clients that are unable or unwilling to proceed SHOULD
 		 terminate the LDAP session"
 		*/
-		ldapResult.UnbindResponse, ldapResult.UnbindError = unbind(conn)
+		//ldapResult.UnbindResponse, ldapResult.UnbindError = unbind(conn)
+		// we never binded (we used wrong bind version), hence no need to unbind
 	}
 	// and the TCP connection is closed afterward as it should be
 

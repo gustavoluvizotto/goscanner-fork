@@ -26,7 +26,7 @@ var ALL_SCANS = map[string]Scans{
 	"jarm":          &scans.JARMScan{},
 	"starttls_ldap": &scans.StartTLSLDAP{},
 	"ldap":          &scans.LDAPScan{},
-	"ldap_crawl":    &scans.LDAPCrawlScan{},
+	"ldap_metadata": &scans.LDAPMetadataScan{},
 }
 
 type Scans interface {

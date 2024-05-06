@@ -5,12 +5,12 @@ go 1.13
 require (
 	github.com/DataDog/zstd v1.5.5
 	github.com/bt51/ntpclient v0.0.0-20140310165113-3045f71e2530
-	github.com/go-asn1-ber/asn1-ber v1.5.5
-	github.com/gustavoluvizotto/ldap-fork/v3 v3.0.0-20240411101439-ad842dcc3d63
+	github.com/go-asn1-ber/asn1-ber v1.5.7
+	github.com/go-ldap/ldap/v3 v3.4.9-0.20240503161532-56e5759aadc4
 	github.com/hdm/jarm-go v0.0.7
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/onsi/gomega v1.32.0 // indirect
+	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.32.0
 	github.com/tumi8/ssh v0.0.0-20170913080928-6e772825dc10
