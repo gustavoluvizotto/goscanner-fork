@@ -72,10 +72,19 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	}
 	oidErr := respondedWithOID(response, ldapStartTLSOID)
 	if oidErr == nil {
+		// rfc4511#section-4.14.1
+		// "... StartTLS Extended response and, in the case of a successful response, completes TLS negotiations."
+		//  rfc4511#section-4.14.2
+		// "The responseName is "1.3.6.1.4.1.1466.20037" when provided (see Section 4.12).
+		// The responseValue is always absent."
 		sTlsLdapResult.HasRespondedStartTLS = true
 	}
 	addLDAPStartTLSResult(result, synStart, synEnd, err, &sTlsLdapResult)
 
+	if !sTlsLdapResult.HasRespondedStartTLS {
+		// if result code OK, then move on with TLS handshake, otherwise reconnect
+		err = errors.New("no StartTLS response received")
+	}
 	return conn, nil
 }
 
@@ -128,6 +137,7 @@ func parseLDAPResponse(response *ber.Packet) (results.LDAPGeneralResult, error) 
 		if ldapError.ResultCode == ldap.ErrorNetwork || ldapError.ResultCode == ldap.ErrorUnexpectedResponse {
 			ldapResult.IsLDAPServer = false
 		} else {
+			// if there is no error, this means we could parse as a LDAP response
 			ldapResult.IsLDAPServer = true
 		}
 		ldapResult.ResultCode = ldapError.ResultCode
