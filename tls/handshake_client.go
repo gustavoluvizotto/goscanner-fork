@@ -85,6 +85,7 @@ func (c *Conn) makeClientHello() (*clientHelloMsg, []ecdheParameters, error) {
 		config.CurvePreferences = config.ClientHelloPreset.SupportedGroups
 		config.KeyShares = config.ClientHelloPreset.KeyShares
 		c.vers = config.ClientHelloPreset.Version
+		hello.supportedVersions = config.ClientHelloPreset.SupportedVersions
 	}
 
 	if c.handshakes > 0 {
