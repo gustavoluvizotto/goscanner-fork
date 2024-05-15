@@ -466,9 +466,9 @@ func (hs *clientHandshakeState) handshake() error {
 		if err := hs.readSessionTicket(); err != nil {
 			return err
 		}
-		if err := hs.readFinished(c.serverFinished[:]); err != nil {
-			return err
-		}
+		//if err := hs.readFinished(c.serverFinished[:]); err != nil {
+		//	return err
+		//}
 	}
 
 	c.ekm = ekmFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random)

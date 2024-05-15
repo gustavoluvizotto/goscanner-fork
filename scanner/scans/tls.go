@@ -151,6 +151,7 @@ func (s *TLSScan) Scan(conn net.Conn, target *Target, result *results.ScanResult
 }
 
 func scanTLS(conn net.Conn, serverName string, timeout time.Duration, maxVersion uint16, clientSessionCache tls.ClientSessionCache, ciphers []uint16, alpnProtocols []string, clientHello string, keyLogWriter io.Writer, clientHelloPreset *tls.ClientHelloPreset) (*tls.Conn, error) {
+	log.Debug().Str("CH", clientHello).Msg("client hello")
 	customClientHello := misc.GetClientHello(clientHello)
 	if clientHelloPreset != nil {
 		customClientHello = clientHelloPreset
