@@ -81,10 +81,10 @@ func (s *StartTLSLDAP) Scan(conn net.Conn, target *Target, result *results.ScanR
 	}
 	addLDAPStartTLSResult(result, synStart, synEnd, err, &sTlsLdapResult)
 
-	if !sTlsLdapResult.HasRespondedStartTLS {
-		// if result code OK, then move on with TLS handshake, otherwise reconnect
-		err = errors.New("no StartTLS response received")
-	}
+	//if !sTlsLdapResult.HasRespondedStartTLS {
+	//	// if result code OK, then move on with TLS handshake, otherwise reconnect
+	//	err = errors.New("no StartTLS response received")
+	//}
 	return conn, nil
 }
 
