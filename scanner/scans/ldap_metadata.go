@@ -2,7 +2,7 @@ package scans
 
 import (
 	"errors"
-	"github.com/go-ldap/ldap/v3"
+	"github.com/gustavoluvizotto/ldap-fork/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/tumi8/goscanner/scanner/misc"
 	"github.com/tumi8/goscanner/scanner/results"
@@ -30,7 +30,7 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		log.Error().Str("target", target.Ip).Msg("TCP Connection was nil")
 		return nil, errors.New("TCP Connection was nil")
 	}
-	// defer conn.Close() // to be able to re-use conn
+	// defer conn.Close() // do not close; to be able to re-use conn
 
 	isTls := false
 	for _, r := range result.SubResults {
@@ -55,7 +55,7 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 	baseDN := "cn=subschema"
 	attributes := []string{"*", "+"}
 	limit := 0
-	schemaEntries, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
+	schemaEntries, _, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
 
 	ldapSchemaResult := results.LDAPSchemaResult{}
 	var ldapError *ldap.Error
@@ -88,6 +88,8 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 	attributes = []string{
 		"altServer",
 		"namingContexts",
+		"namingcontexts",
+		"defaultNamingContext",
 		"supportedControl",
 		"supportedExtension",
 		"supportedFeatures",
@@ -103,6 +105,7 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		"dnsHostName",
 		"serverName",
 		"dsaVersionString",
+		"subSchemaSubEntry",
 		"subschemaSubentry",
 		"ibmdirectoryversion",
 		"ibm-enabledcapabilities",
@@ -125,10 +128,27 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		"msExchRecipientTypeDetails",
 		"msExchArchiveStatus",
 		"msExchRecipientTypeDetails",
+		"isSynchronized",
+		"domainControllerFunctionality",
+		"domainFunctionality",
+		"forestFunctionality",
+		"vmwPlatformServicesControllerVersion",
+		"orcldirectoryversion",
+		"metaProductID",
+		"metaVersion",
+		"dsaVersion",
+		"xserverversion",
 		"homeDirectory",
 		"o", "ou", "+"} // additional attributes - trying to get more information
 	limit = 0
-	rootDseEntries, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
+	rootDseEntries, rootDseRaw, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
+
+	result.AddResult(results.ScanSubResult{
+		SynStart: synStart,
+		SynEnd:   synEnd,
+		ScanEnd:  time.Now().UTC(),
+		Result:   rootDseRaw,
+	})
 
 	ldapRootDSEResult := results.LDAPRootDSEResult{}
 	errors.As(err, &ldapError)
@@ -144,10 +164,11 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		ScanEnd:  time.Now().UTC(),
 		Result:   &ldapRootDSEResult,
 	})
+
 	return conn, nil
 }
 
-func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter string, attributes []string, limit int) ([]results.LDAPSearchEntry, error) {
+func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter string, attributes []string, limit int) ([]results.LDAPSearchEntry, *results.LDAPRootDSERawResult, error) {
 	req := ldap.SearchRequest{
 		BaseDN:       baseDN,
 		Scope:        scope,
@@ -161,6 +182,7 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 	}
 	searchResult, err := ldapConn.Search(&req)
 	resultEntries := make([]results.LDAPSearchEntry, 0)
+	rawResult := results.LDAPRootDSERawResult{RawResponse: nil}
 	if searchResult != nil {
 		resultEntries = make([]results.LDAPSearchEntry, len(searchResult.Entries))
 		for i, ent := range searchResult.Entries {
@@ -176,6 +198,14 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 				break
 			}
 		}
+
+		for i := range ldap.RawResult {
+			packet := ldap.RawResult[i].Bytes()
+			for j := range packet {
+				rawResult.RawResponse = append(rawResult.RawResponse, packet[j])
+			}
+		}
+
 	}
-	return resultEntries, err
+	return resultEntries, &rawResult, err
 }

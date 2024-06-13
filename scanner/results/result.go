@@ -26,10 +26,11 @@ const (
 	FileJarm        = "jarm.csv"
 	FileKeyLog      = "tls-keylog"
 
-	FileStartTLSLDAP = "starttls_ldap.csv"
-	FileLDAP         = "ldap.csv"
-	FileLDAPRootDSE  = "ldap_root_dse.csv"
-	FileLDAPSchema   = "ldap_schema.csv"
+	FileStartTLSLDAP   = "starttls_ldap.csv"
+	FileLDAP           = "ldap.csv"
+	FileLDAPRootDSE    = "ldap_root_dse.csv"
+	FileLDAPRootDSERaw = "ldap_root_dse_raw.csv"
+	FileLDAPSchema     = "ldap_schema.csv"
 )
 
 type ScanResult struct {
