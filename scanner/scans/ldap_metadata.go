@@ -199,10 +199,10 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 			}
 		}
 
-		for i := range ldap.RawResult {
-			packet := ldap.RawResult[i].Bytes()
-			for j := range packet {
-				rawResult.RawResponse = append(rawResult.RawResponse, packet[j])
+		for _, packet := range ldap.RawResult {
+			packetBytes := packet.Bytes()
+			for _, packetByte := range packetBytes {
+				rawResult.RawResponse = append(rawResult.RawResponse, packetByte)
 			}
 		}
 
