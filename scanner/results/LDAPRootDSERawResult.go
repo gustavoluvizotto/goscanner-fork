@@ -31,9 +31,8 @@ func (t *LDAPRootDSERawResult) WriteCsv(writer *csv.Writer, parentResult *ScanRe
 	if err != nil {
 		log.Err(err).Str("address", parentResult.Address).Msg("Could not split address into host and port parts.")
 	}
-	// TODO i need the 		packet, err := l.readPacket(msgCtx) packet output entirely
-	// or use the go lib and categorize directly
-	ldapRawResponse := base64.StdEncoding.EncodeToString(t.RawResponse)
+
+	ldapRawResponse := base64.RawStdEncoding.EncodeToString(t.RawResponse)
 	return writer.Write([]string{
 		parentResult.Id.ToString(),
 		ip,

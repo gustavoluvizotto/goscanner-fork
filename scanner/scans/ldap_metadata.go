@@ -182,7 +182,7 @@ func SearchAndGetEntries(ldapConn *ldap.Conn, baseDN string, scope int, filter s
 	}
 	searchResult, err := ldapConn.Search(&req)
 	resultEntries := make([]results.LDAPSearchEntry, 0)
-	rawResult := results.LDAPRootDSERawResult{RawResponse: nil}
+	rawResult := results.LDAPRootDSERawResult{}
 	if searchResult != nil {
 		resultEntries = make([]results.LDAPSearchEntry, len(searchResult.Entries))
 		for i, ent := range searchResult.Entries {
