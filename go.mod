@@ -6,9 +6,9 @@ require (
 	github.com/DataDog/zstd v1.5.5
 	github.com/bt51/ntpclient v0.0.0-20140310165113-3045f71e2530
 	github.com/go-asn1-ber/asn1-ber v1.5.7
-	github.com/gustavoluvizotto/ldap-fork/v3 v3.0.0-20240613131055-f6946031ead2
+	github.com/gustavoluvizotto/ldap-fork/v3 v3.0.0-20240618113544-fa6394db86b8
 	github.com/hdm/jarm-go v0.0.7
-	github.com/jessevdk/go-flags v1.5.0
+	github.com/jessevdk/go-flags v1.6.1
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/pkg/errors v0.9.1
