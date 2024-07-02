@@ -107,6 +107,7 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		"dsaVersionString",
 		"subSchemaSubEntry",
 		"subschemaSubentry",
+		"subschemasubentry",
 		"ibmdirectoryversion",
 		"ibm-enabledcapabilities",
 		"ibm-supportedcapabilities",
@@ -139,6 +140,11 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		"dsaVersion",
 		"xserverversion",
 		"homeDirectory",
+		"objectClass",
+		"structuralObjectClass",
+		"dominomajminversion",
+		"ibm-osregistrycontext",
+		"orcldirectoryversion",
 		"o", "ou", "+"} // additional attributes - trying to get more information
 	limit = 0
 	rootDseEntries, rootDseRaw, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
