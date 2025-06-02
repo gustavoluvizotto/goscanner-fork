@@ -145,6 +145,8 @@ func (s *LDAPMetadataScan) Scan(conn net.Conn, target *Target, result *results.S
 		"dominomajminversion",
 		"ibm-osregistrycontext",
 		"orcldirectoryversion",
+		"orclreplicaid",
+		"objectVersion",
 		"o", "ou", "+"} // additional attributes - trying to get more information
 	limit = 0
 	rootDseEntries, rootDseRaw, err := SearchAndGetEntries(ldapConn, baseDN, scope, filter, attributes, limit)
